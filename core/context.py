@@ -36,8 +36,34 @@ class AssistantContext:
     _lock: Lock = field(default_factory=Lock, repr=False)
     
     def __post_init__(self):
-        """Ensure config directory exists"""
+        """Ensure config directory exists and load settings"""
         self.config_dir.mkdir(parents=True, exist_ok=True)
+        
+        # Create default config files if they don't exist
+        from config.defaults import ensure_config_files
+        ensure_config_files(self.config_dir)
+        
+        # Load settings
+        self._load_settings()
+    
+    def _load_settings(self):
+        """Load settings from config file"""
+        from config.defaults import load_config_file, get_default_settings
+        
+        settings = load_config_file(
+            self.config_dir, 
+            "settings.json", 
+            get_default_settings
+        )
+        
+        # Apply settings to context
+        if "user" in settings:
+            self.user_name = settings["user"].get("name", self.user_name)
+        
+        if "voice" in settings:
+            self.voice_enabled = settings["voice"].get("enabled", self.voice_enabled)
+            self.voice_rate = settings["voice"].get("rate", self.voice_rate)
+            self.preferred_voice_id = settings["voice"].get("voice_id")
     
     def set_state(self, **kwargs):
         """Thread-safe state update"""

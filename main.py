@@ -6,6 +6,7 @@ Entry point and application initialization.
 """
 import logging
 import sys
+import skills.config    # Configuration management
 from pathlib import Path
 from threading import Thread
 
@@ -36,9 +37,9 @@ import skills.system
 import skills.calculator
 import skills.apps
 # Import other skills as you create them:
-# import skills.notes
-# import skills.files
-# import skills.web
+import skills.notes
+import skills.files
+import skills.web
 # etc.
 
 

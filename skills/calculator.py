@@ -121,15 +121,24 @@ class CalculatorSkill(BaseSkill):
             if re.fullmatch(r"-?\d+(\.\d+)?", w):
                 tokens.append(w)
                 i += 1
+                matched = True
+            # Check if it's an operator symbol directly
+            elif w in ['+', '-', '*', '/', '%', '(', ')', '.']:
+                tokens.append(w)
+                i += 1
+                matched = True
             else:
-                raise ValueError(f"Unrecognized term: '{w}'")
+                # Skip unrecognized words (like "and", "the", etc.)
+                # Instead of raising error, just skip them
+                i += 1
+                matched = True
         
         # Join tokens and add spacing around operators
         expr = "".join(tokens)
         spaced = re.sub(r"([+\-*/%()^])", r" \1 ", expr)
         return re.sub(r"\s+", " ", spaced).strip()
     
-    def handle_percentage(self, query: str) -> tuple:
+    def handle_percentage(self, query: str) -> tuple[bool, str]:
         """
         Handle percentage calculations separately.
         

@@ -20,7 +20,14 @@ class WikipediaSkill(BaseSkill):
         
         if not search_term:
             # Extract from query: "wikipedia Albert Einstein" -> "Albert Einstein"
-            term = query.lower().replace('wikipedia', '').strip()
+            # But NOT "open wikipedia"
+            if query.lower().strip() in ['wikipedia', 'wiki', 'open wikipedia', 'open wiki']:
+                # User just said "wikipedia" without a topic - open the website
+                import webbrowser
+                webbrowser.open("https://www.wikipedia.org")
+                return self.success_response("Opening Wikipedia website")
+            
+            term = query.lower().replace('wikipedia', '').replace('wiki', '').strip()
             if not term:
                 return self.error_response(
                     "Search term required. Example: 'wikipedia Albert Einstein'"
@@ -176,12 +183,12 @@ class YouTubeSearchSkill(BaseSkill):
 
 
 # Register commands
-@command(["wikipedia", "wiki"], priority=10)
+@command(["wikipedia", "wiki"], priority=50)  # Higher priority than "open"
 def cmd_wikipedia(ctx: AssistantContext, query: str) -> Dict[str, Any]:
     return WikipediaSkill().execute(ctx, query)
 
 
-@command(["search for", "search", "google"], priority=5)
+@command(["search for", "search", "google"], priority=30)  # Higher than "open", lower than "wikipedia"
 def cmd_google_search(ctx: AssistantContext, query: str) -> Dict[str, Any]:
     return GoogleSearchSkill().execute(ctx, query)
 

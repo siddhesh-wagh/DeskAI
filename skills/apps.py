@@ -9,6 +9,7 @@ from typing import Dict, Any, Optional
 import webbrowser
 import json
 import shutil
+import re
 from pathlib import Path
 
 
@@ -117,6 +118,17 @@ class AppLauncher(BaseSkill):
     def execute(self, context: AssistantContext, query: str, **params) -> Dict[str, Any]:
         q = query.lower()
         
+        # Special handling for "open youtube and play X"
+        youtube_play_match = re.search(r'open youtube and (?:play|search for|search|find) (.+)', q)
+        if youtube_play_match:
+            search_term = youtube_play_match.group(1).strip()
+            try:
+                search_url = f"https://www.youtube.com/results?search_query={search_term.replace(' ', '+')}"
+                webbrowser.open(search_url)
+                return self.success_response(f"Opening YouTube and searching for '{search_term}'")
+            except Exception as e:
+                return self.error_response(f"Failed to open YouTube: {e}")
+        
         # Check for websites first
         for site_name, url in self.websites.items():
             if site_name in q:
@@ -150,6 +162,8 @@ class AppLauncher(BaseSkill):
             match = re.search(pattern, q)
             if match:
                 app_name = match.group(1).strip()
+                
+                # First, try to find as application
                 command = self.find_app_command(app_name)
                 
                 if command:
@@ -158,13 +172,77 @@ class AppLauncher(BaseSkill):
                         return self.success_response(f"Opening {app_name}")
                     except Exception as e:
                         return self.error_response(f"Failed to open {app_name}: {e}")
-                else:
-                    return self.error_response(
-                        f"Application '{app_name}' not found. "
-                        f"Add it to ~/.deskai/apps.json"
-                    )
+                
+                # Not found as app - try as website
+                # Smart website detection: if it looks like a website name, open it
+                if self._is_likely_website(app_name):
+                    website_url = self._guess_website_url(app_name)
+                    try:
+                        webbrowser.open(website_url)
+                        return self.success_response(f"Opening {app_name} at {website_url}")
+                    except Exception as e:
+                        return self.error_response(f"Failed to open website: {e}")
+                
+                # Still not found - give helpful error
+                return self.error_response(
+                    f"Application or website '{app_name}' not found.\n"
+                    f"• For apps: Add to ~/.deskai/apps.json\n"
+                    f"• For websites: I'll try common patterns (e.g., 'snapchat' → snapchat.com)"
+                )
         
         return self.error_response("Could not identify application to open")
+    
+    def _is_likely_website(self, name: str) -> bool:
+        """
+        Check if the name looks like a website.
+        
+        Args:
+            name: App/site name
+        
+        Returns:
+            True if likely a website
+        """
+        # Single word without extension = likely a website/brand
+        # Examples: facebook, twitter, snapchat, netflix
+        name_clean = name.lower().strip()
+        
+        # If it contains common app indicators, probably not a website
+        app_indicators = ['.exe', '.app', '\\', '/', 'program files']
+        if any(indicator in name_clean for indicator in app_indicators):
+            return False
+        
+        # If it's a single word or simple phrase, likely a website
+        # Exclude very generic terms
+        generic_terms = ['file', 'folder', 'document', 'calculator', 'notepad']
+        if name_clean in generic_terms:
+            return False
+        
+        # Single word or 2-3 words = likely website/brand
+        word_count = len(name_clean.split())
+        return word_count <= 3
+    
+    def _guess_website_url(self, name: str) -> str:
+        """
+        Guess the website URL from a name.
+        
+        Args:
+            name: Website/brand name
+        
+        Returns:
+            Guessed URL
+        """
+        name_clean = name.lower().strip().replace(' ', '')
+        
+        # Common patterns
+        patterns = [
+            f"https://www.{name_clean}.com",
+            f"https://{name_clean}.com",
+            f"https://www.{name_clean}.net",
+            f"https://www.{name_clean}.org",
+        ]
+        
+        # Return first pattern (most common: .com)
+        return patterns[0]
 
 
 # Register open/launch commands
