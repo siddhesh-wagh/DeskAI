@@ -11,17 +11,43 @@ import json
 import shutil
 import re
 from pathlib import Path
+from threading import Lock
 
 
 class AppLauncher(BaseSkill):
     """
     Launch applications and websites.
     Uses configuration file for app mappings instead of hardcoded paths.
+    
+    Singleton pattern to avoid reloading config on every command.
     """
     
+    _instance = None
+    _lock = Lock()
+    
+    def __new__(cls):
+        """Singleton pattern - only one instance exists"""
+        if cls._instance is None:
+            with cls._lock:
+                if cls._instance is None:  # Double-check locking
+                    cls._instance = super().__new__(cls)
+                    cls._instance._initialized = False
+        return cls._instance
+    
     def __init__(self):
+        """Initialize only once"""
+        if self._initialized:
+            return
+        
         super().__init__()
         self.os_manager = OSManager()
+        self._load_app_config()
+        self._initialized = True
+        self._logger.info("AppLauncher initialized (singleton)")
+    
+    def reload_config(self):
+        """Force reload of configuration (for config changes)"""
+        self._logger.info("Reloading app configuration...")
         self._load_app_config()
     
     def _load_app_config(self):
@@ -151,7 +177,6 @@ class AppLauncher(BaseSkill):
         
         # Try to extract app name from query
         # Patterns: "open X", "launch X", "start X"
-        import re
         patterns = [
             r'open\s+(.+)',
             r'launch\s+(.+)',
@@ -245,7 +270,37 @@ class AppLauncher(BaseSkill):
         return patterns[0]
 
 
-# Register open/launch commands
-@command(["open", "launch", "start"], priority=20)
+# Register open/launch commands with LOWER priority
+# This allows more specific commands to match first
+@command(["open", "launch", "start"], priority=15)
 def cmd_launch_app(ctx: AssistantContext, query: str) -> Dict[str, Any]:
+    """
+    Generic app/website launcher.
+    Only handles if no more specific command matches.
+    """
+    # Skip if query contains file-related keywords
+    file_keywords = ['file', 'folder', 'directory', 'document', 'screenshot']
+    if any(kw in query.lower() for kw in file_keywords):
+        return None  # Let file skills handle it
+    
+    # Skip if query contains media keywords
+    media_keywords = ['clipboard', 'volume', 'sound']
+    if any(kw in query.lower() for kw in media_keywords):
+        return None  # Let media skills handle it
+    
+    # Skip if query contains timer/reminder keywords
+    timer_keywords = ['timer', 'reminder', 'alarm']
+    if any(kw in query.lower() for kw in timer_keywords):
+        return None  # Let reminder skills handle it
+    
     return AppLauncher().execute(ctx, query)
+
+
+@command(["reload apps", "refresh apps"], priority=10)
+def cmd_reload_apps(ctx: AssistantContext, query: str) -> Dict[str, Any]:
+    """Reload app configuration"""
+    try:
+        AppLauncher().reload_config()
+        return {"response": "App configuration reloaded successfully"}
+    except Exception as e:
+        return {"response": f"Failed to reload apps: {e}", "error": True}

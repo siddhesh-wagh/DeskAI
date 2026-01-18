@@ -6,7 +6,6 @@ Entry point and application initialization.
 """
 import logging
 import sys
-import skills.config    # Configuration management
 from pathlib import Path
 from threading import Thread
 
@@ -30,17 +29,10 @@ logger = logging.getLogger(__name__)
 from core.context import AssistantContext
 from core.dispatcher import get_dispatcher
 from core.assistant import DeskAI
+from core.skill_loader import load_skills_from_config
 
-# Import skills to register commands
-# (Importing registers @command decorators)
-import skills.system
-import skills.calculator
-import skills.apps
-# Import other skills as you create them:
-import skills.notes
-import skills.files
-import skills.web
-# etc.
+# Skills are now auto-loaded by skill_loader
+# No manual imports needed!
 
 
 def create_assistant() -> DeskAI:
@@ -53,10 +45,22 @@ def create_assistant() -> DeskAI:
     # Create context
     context = AssistantContext()
     
-    # Get global dispatcher (already has registered commands from imports)
+    # Auto-load all skills
+    skill_loader = load_skills_from_config(context.config_dir)
+    
+    # Get global dispatcher (now has all auto-loaded commands)
     dispatcher = get_dispatcher()
     
-    logger.info(f"Loaded {dispatcher.get_handler_count()} command handlers")
+    logger.info(f"Registered {dispatcher.get_handler_count()} command handlers")
+    
+    # Log loaded skills
+    loaded = skill_loader.get_loaded_skills()
+    if loaded:
+        logger.info(f"Active skills: {', '.join(loaded)}")
+    
+    failed = skill_loader.get_failed_skills()
+    if failed:
+        logger.warning(f"Failed skills: {', '.join(failed)}")
     
     # Define UI callbacks (these will be overridden by GUI)
     def on_response(text: str, is_error: bool):
@@ -134,6 +138,7 @@ def run_gui_mode():
 def main():
     """Main entry point"""
     import argparse
+    import platform
     
     parser = argparse.ArgumentParser(description="DeskAI Voice Assistant")
     parser.add_argument(
@@ -146,15 +151,35 @@ def main():
         action="store_true",
         help="Enable debug logging"
     )
+    parser.add_argument(
+        "--list-skills",
+        action="store_true",
+        help="List available skills and exit"
+    )
     
     args = parser.parse_args()
     
     if args.debug:
         logging.getLogger().setLevel(logging.DEBUG)
     
+    # Handle --list-skills flag
+    if args.list_skills:
+        from pathlib import Path
+        skills_dir = Path(__file__).parent / "skills"
+        skill_files = [
+            f.stem for f in skills_dir.glob("*.py")
+            if f.stem not in ("__init__", "base") and not f.stem.startswith("_")
+        ]
+        print(f"Available skills ({len(skill_files)}):")
+        for skill in sorted(skill_files):
+            print(f"  • {skill}")
+        sys.exit(0)
+    
     logger.info("="*50)
     logger.info("DeskAI Voice Assistant Starting")
     logger.info("="*50)
+    logger.info(f"Python: {sys.version.split()[0]}")
+    logger.info(f"Platform: {platform.system()} {platform.release()}")
     
     if args.cli:
         run_cli_mode()

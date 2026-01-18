@@ -188,17 +188,17 @@ class ListFilesSkill(BaseSkill):
         return f"{size_bytes:.1f} TB"
 
 
-# Register commands
-@command(["create file", "new file", "make file"], priority=10)
+# Register commands with HIGH priority to override generic "open"
+@command(["create file", "new file", "make file"], priority=40)
 def cmd_create_file(ctx: AssistantContext, query: str) -> Dict[str, Any]:
     return CreateFileSkill().execute(ctx, query)
 
 
-@command(["search file", "find file", "search for"], priority=10)
+@command(["search file", "find file", "search for"], priority=40)
 def cmd_search_file(ctx: AssistantContext, query: str) -> Dict[str, Any]:
     return SearchFileSkill().execute(ctx, query)
 
 
-@command(["list files", "show files"], priority=10)
+@command(["list files", "show files", "open files", "open file manager"], priority=40)
 def cmd_list_files(ctx: AssistantContext, query: str) -> Dict[str, Any]:
     return ListFilesSkill().execute(ctx, query)

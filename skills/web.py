@@ -9,6 +9,7 @@ import webbrowser
 import wikipedia
 import pyjokes
 import requests
+import re
 
 
 class WikipediaSkill(BaseSkill):
@@ -23,7 +24,6 @@ class WikipediaSkill(BaseSkill):
             # But NOT "open wikipedia"
             if query.lower().strip() in ['wikipedia', 'wiki', 'open wikipedia', 'open wiki']:
                 # User just said "wikipedia" without a topic - open the website
-                import webbrowser
                 webbrowser.open("https://www.wikipedia.org")
                 return self.success_response("Opening Wikipedia website")
             
@@ -96,12 +96,42 @@ class GoogleSearchSkill(BaseSkill):
 class WeatherSkill(BaseSkill):
     """Get weather information"""
     
+    def _sanitize_weather_text(self, text: str) -> str:
+        """
+        Remove Unicode characters that Windows console can't display.
+        
+        Args:
+            text: Weather text from wttr.in
+        
+        Returns:
+            ASCII-safe weather text
+        """
+        # Replace Unicode arrows with ASCII equivalents
+        arrow_map = {
+            '↑': 'N',   # North
+            '↗': 'NE',  # Northeast
+            '→': 'E',   # East
+            '↘': 'SE',  # Southeast
+            '↓': 'S',   # South
+            '↙': 'SW',  # Southwest
+            '←': 'W',   # West
+            '↖': 'NW',  # Northwest
+        }
+        
+        result = text
+        for unicode_char, ascii_equiv in arrow_map.items():
+            result = result.replace(unicode_char, ascii_equiv)
+        
+        # Remove any remaining non-ASCII characters
+        result = result.encode('ascii', errors='ignore').decode('ascii')
+        
+        return result
+    
     def execute(self, context: AssistantContext, query: str, **params) -> Dict[str, Any]:
         city = params.get('city')
         
         if not city:
             # Extract from query: "weather in Mumbai" -> "Mumbai"
-            import re
             match = re.search(r'weather in (.+)', query.lower())
             if match:
                 city = match.group(1).strip()
@@ -109,22 +139,48 @@ class WeatherSkill(BaseSkill):
                 city = "auto"  # Auto-detect location
         
         try:
-            # Use wttr.in service (no API key needed)
+            # Try wttr.in first (no API key needed)
             url = f"https://wttr.in/{city}?format=%C+%t+%h+%w"
-            response = requests.get(url, timeout=5)
+            response = requests.get(url, timeout=10)
             
             if response.status_code == 200:
                 weather_data = response.text.strip()
-                return self.success_response(f"Current weather: {weather_data}")
+                # Sanitize Unicode characters for Windows console
+                weather_data_safe = self._sanitize_weather_text(weather_data)
+                
+                city_display = city if city != "auto" else "your location"
+                return self.success_response(
+                    f"Current weather in {city_display}: {weather_data_safe}"
+                )
             else:
-                return self.error_response("Could not fetch weather information")
+                # Fallback: Open weather website
+                return self._open_weather_website(city)
         
-        except requests.RequestException as e:
-            return self.error_response(
-                f"Weather service unavailable: {e}. Check internet connection."
-            )
+        except requests.Timeout:
+            # Service is slow, open website instead
+            return self._open_weather_website(city)
+        
+        except requests.RequestException:
+            return self._open_weather_website(city)
+        
         except Exception as e:
             return self.error_response(f"Weather fetch failed: {e}")
+    
+    def _open_weather_website(self, city: str) -> Dict[str, Any]:
+        """Fallback: Open weather website"""
+        try:
+            if city and city != "auto":
+                url = f"https://www.google.com/search?q=weather+in+{city.replace(' ', '+')}"
+            else:
+                url = "https://www.weather.com"
+            
+            webbrowser.open(url)
+            city_display = city if city != "auto" else "your location"
+            return self.success_response(
+                f"Weather service timeout. Opening weather website for {city_display}..."
+            )
+        except Exception as e:
+            return self.error_response(f"Could not fetch weather: {e}")
 
 
 class JokeSkill(BaseSkill):
@@ -183,12 +239,12 @@ class YouTubeSearchSkill(BaseSkill):
 
 
 # Register commands
-@command(["wikipedia", "wiki"], priority=50)  # Higher priority than "open"
+@command(["wikipedia", "wiki"], priority=50)
 def cmd_wikipedia(ctx: AssistantContext, query: str) -> Dict[str, Any]:
     return WikipediaSkill().execute(ctx, query)
 
 
-@command(["search for", "search", "google"], priority=30)  # Higher than "open", lower than "wikipedia"
+@command(["search for", "search", "google"], priority=30)
 def cmd_google_search(ctx: AssistantContext, query: str) -> Dict[str, Any]:
     return GoogleSearchSkill().execute(ctx, query)
 

@@ -173,14 +173,14 @@ class DateSkill(BaseSkill):
 
 
 # Register commands using dispatcher
-@command(["system info", "system status"], priority=10)
-def cmd_system_info(ctx: AssistantContext, query: str) -> Dict[str, Any]:
-    return SystemInfoSkill().execute(ctx, query)
-
-
-@command(["battery", "battery status"], priority=10)
+@command(["battery", "battery status", "battery level"], priority=30)  # Increased from 10
 def cmd_battery(ctx: AssistantContext, query: str) -> Dict[str, Any]:
     return BatterySkill().execute(ctx, query)
+
+
+@command(["system info", "system status"], priority=10)  # Keep lower
+def cmd_system_info(ctx: AssistantContext, query: str) -> Dict[str, Any]:
+    return SystemInfoSkill().execute(ctx, query)
 
 
 @command(["shutdown", "restart", "log off", "logout", "sleep"], priority=100)
