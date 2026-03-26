@@ -64,7 +64,8 @@ class AppLauncher(BaseSkill):
             "instagram": "https://instagram.com",
             "reddit": "https://reddit.com",
             "stack overflow": "https://stackoverflow.com",
-            "weather": "https://weather.com"
+            "weather": "https://weather.com",
+            "whatsapp": "https://web.whatsapp.com/"
         }
         
         # Platform-specific system apps

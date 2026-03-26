@@ -112,7 +112,7 @@ class WindowManagementSkill(BaseSkill):
                 pyautogui.hotkey("alt", "tab")
                 return self.success_response("Switched window")
             
-            elif "minimize" in q:
+            elif "minimise" in q:
                 pyautogui.hotkey("win", "down")
                 return self.success_response("Window minimized")
             
@@ -180,7 +180,7 @@ def cmd_read_clipboard(ctx: AssistantContext, query: str) -> Dict[str, Any]:
     return ClipboardReadSkill().execute(ctx, query)
 
 
-@command(["alt tab", "switch window", "minimize", "maximize", "close window", "split"], priority=10)
+@command(["alt tab", "switch window", "minimise", "maximize", "close window", "split"], priority=10)
 def cmd_window_management(ctx: AssistantContext, query: str) -> Dict[str, Any]:
     return WindowManagementSkill().execute(ctx, query)
 

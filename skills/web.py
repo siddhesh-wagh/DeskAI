@@ -16,14 +16,10 @@ class WikipediaSkill(BaseSkill):
     """Search Wikipedia"""
     
     def execute(self, context: AssistantContext, query: str, **params) -> Dict[str, Any]:
-        # Extract search term
         search_term = params.get('term')
         
         if not search_term:
-            # Extract from query: "wikipedia Albert Einstein" -> "Albert Einstein"
-            # But NOT "open wikipedia"
             if query.lower().strip() in ['wikipedia', 'wiki', 'open wikipedia', 'open wiki']:
-                # User just said "wikipedia" without a topic - open the website
                 webbrowser.open("https://www.wikipedia.org")
                 return self.success_response("Opening Wikipedia website")
             
@@ -35,7 +31,6 @@ class WikipediaSkill(BaseSkill):
             search_term = term
         
         try:
-            # Search Wikipedia
             summary = wikipedia.summary(search_term, sentences=2)
             
             return SkillResult()\
@@ -47,11 +42,9 @@ class WikipediaSkill(BaseSkill):
                 .build()
         
         except wikipedia.exceptions.DisambiguationError as e:
-            # Multiple results
             options = ', '.join(e.options[:5])
             return self.error_response(
-                f"Multiple results found for '{search_term}'. "
-                f"Try: {options}"
+                f"Multiple results found for '{search_term}'. Try: {options}"
             )
         
         except wikipedia.exceptions.PageError:
@@ -70,7 +63,6 @@ class GoogleSearchSkill(BaseSkill):
         search_term = params.get('term')
         
         if not search_term:
-            # Extract from query
             term = query.lower()
             for keyword in ['search for', 'search', 'google']:
                 term = term.replace(keyword, '')
@@ -83,7 +75,6 @@ class GoogleSearchSkill(BaseSkill):
             search_term = term
         
         try:
-            # Open Google search
             search_url = f"https://www.google.com/search?q={search_term}"
             webbrowser.open(search_url)
             
@@ -97,77 +88,45 @@ class WeatherSkill(BaseSkill):
     """Get weather information"""
     
     def _sanitize_weather_text(self, text: str) -> str:
-        """
-        Remove Unicode characters that Windows console can't display.
-        
-        Args:
-            text: Weather text from wttr.in
-        
-        Returns:
-            ASCII-safe weather text
-        """
-        # Replace Unicode arrows with ASCII equivalents
         arrow_map = {
-            '↑': 'N',   # North
-            '↗': 'NE',  # Northeast
-            '→': 'E',   # East
-            '↘': 'SE',  # Southeast
-            '↓': 'S',   # South
-            '↙': 'SW',  # Southwest
-            '←': 'W',   # West
-            '↖': 'NW',  # Northwest
+            '↑': 'N', '↗': 'NE', '→': 'E', '↘': 'SE',
+            '↓': 'S', '↙': 'SW', '←': 'W', '↖': 'NW',
         }
         
         result = text
         for unicode_char, ascii_equiv in arrow_map.items():
             result = result.replace(unicode_char, ascii_equiv)
         
-        # Remove any remaining non-ASCII characters
         result = result.encode('ascii', errors='ignore').decode('ascii')
-        
         return result
     
     def execute(self, context: AssistantContext, query: str, **params) -> Dict[str, Any]:
         city = params.get('city')
         
         if not city:
-            # Extract from query: "weather in Mumbai" -> "Mumbai"
             match = re.search(r'weather in (.+)', query.lower())
             if match:
                 city = match.group(1).strip()
             else:
-                city = "auto"  # Auto-detect location
+                city = "auto"
         
         try:
-            # Try wttr.in first (no API key needed)
             url = f"https://wttr.in/{city}?format=%C+%t+%h+%w"
             response = requests.get(url, timeout=10)
             
             if response.status_code == 200:
-                weather_data = response.text.strip()
-                # Sanitize Unicode characters for Windows console
-                weather_data_safe = self._sanitize_weather_text(weather_data)
-                
+                weather_data = self._sanitize_weather_text(response.text.strip())
                 city_display = city if city != "auto" else "your location"
                 return self.success_response(
-                    f"Current weather in {city_display}: {weather_data_safe}"
+                    f"Current weather in {city_display}: {weather_data}"
                 )
             else:
-                # Fallback: Open weather website
                 return self._open_weather_website(city)
         
-        except requests.Timeout:
-            # Service is slow, open website instead
+        except Exception:
             return self._open_weather_website(city)
-        
-        except requests.RequestException:
-            return self._open_weather_website(city)
-        
-        except Exception as e:
-            return self.error_response(f"Weather fetch failed: {e}")
     
     def _open_weather_website(self, city: str) -> Dict[str, Any]:
-        """Fallback: Open weather website"""
         try:
             if city and city != "auto":
                 url = f"https://www.google.com/search?q=weather+in+{city.replace(' ', '+')}"
@@ -175,10 +134,8 @@ class WeatherSkill(BaseSkill):
                 url = "https://www.weather.com"
             
             webbrowser.open(url)
-            city_display = city if city != "auto" else "your location"
-            return self.success_response(
-                f"Weather service timeout. Opening weather website for {city_display}..."
-            )
+            return self.success_response("Opening weather website...")
+        
         except Exception as e:
             return self.error_response(f"Could not fetch weather: {e}")
 
@@ -188,9 +145,7 @@ class JokeSkill(BaseSkill):
     
     def execute(self, context: AssistantContext, query: str, **params) -> Dict[str, Any]:
         try:
-            joke = pyjokes.get_joke()
-            return self.success_response(joke)
-        
+            return self.success_response(pyjokes.get_joke())
         except Exception as e:
             return self.error_response(f"Failed to get joke: {e}")
 
@@ -200,45 +155,60 @@ class NewsSkill(BaseSkill):
     
     def execute(self, context: AssistantContext, query: str, **params) -> Dict[str, Any]:
         try:
-            # Open Google News
             webbrowser.open("https://news.google.com")
             return self.success_response("Opening Google News")
-        
         except Exception as e:
             return self.error_response(f"Failed to open news: {e}")
 
 
 class YouTubeSearchSkill(BaseSkill):
-    """Search YouTube"""
+    """Search or Play YouTube"""
     
     def execute(self, context: AssistantContext, query: str, **params) -> Dict[str, Any]:
         search_term = params.get('term')
         
         if not search_term:
-            # Extract from query
             term = query.lower()
-            for keyword in ['youtube', 'search youtube for', 'play']:
+
+            # Remove all possible keywords
+            for keyword in [
+                'play on youtube',
+                'search youtube for',
+                'search youtube',
+                'youtube search',
+                'on youtube',
+                'youtube',
+                'play'
+            ]:
                 term = term.replace(keyword, '')
+
             term = term.strip()
             
             if not term:
                 return self.error_response(
-                    "Search term required. Example: 'search youtube for music'"
+                    "Search term required. Example: 'play music on youtube'"
                 )
+            
             search_term = term
         
         try:
-            # Open YouTube search
-            search_url = f"https://www.youtube.com/results?search_query={search_term}"
-            webbrowser.open(search_url)
+            # 🔥 DIRECT PLAY (Better than search)
+            import pywhatkit
+            pywhatkit.playonyt(search_term)
             
-            return self.success_response(f"Searching YouTube for '{search_term}'")
+            return self.success_response(f"Playing '{search_term}' on YouTube")
         
-        except Exception as e:
-            return self.error_response(f"Failed to open YouTube: {e}")
+        except Exception:
+            # fallback
+            try:
+                search_url = f"https://www.youtube.com/results?search_query={search_term}"
+                webbrowser.open(search_url)
+                return self.success_response(f"Searching YouTube for '{search_term}'")
+            except Exception as e:
+                return self.error_response(f"Failed to open YouTube: {e}")
 
 
-# Register commands
+# ✅ UPDATED COMMAND REGISTRATION
 @command(["wikipedia", "wiki"], priority=50)
 def cmd_wikipedia(ctx: AssistantContext, query: str) -> Dict[str, Any]:
     return WikipediaSkill().execute(ctx, query)
@@ -264,6 +234,13 @@ def cmd_news(ctx: AssistantContext, query: str) -> Dict[str, Any]:
     return NewsSkill().execute(ctx, query)
 
 
-@command(["search youtube", "youtube search", "play on youtube"], priority=10)
+# 🔥 FIXED YOUTUBE COMMAND
+@command([
+    "youtube",
+    "play",
+    "play on youtube",
+    "search youtube",
+    "youtube search"
+], priority=10)
 def cmd_youtube_search(ctx: AssistantContext, query: str) -> Dict[str, Any]:
     return YouTubeSearchSkill().execute(ctx, query)
