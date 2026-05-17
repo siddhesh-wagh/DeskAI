@@ -27,6 +27,6 @@ class WhatsAppManualSkill(BaseSkill):
             return self.error_response(f"Failed: {e}")
 
 
-@command(["open whatsapp", "whatsapp"], priority=40)
+@command(["send whatsapp message", "whatsapp"], priority=5)
 def cmd_whatsapp_manual(ctx: AssistantContext, query: str):
     return WhatsAppManualSkill().execute(ctx, query)

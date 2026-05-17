@@ -8,6 +8,14 @@ import logging
 import sys
 from pathlib import Path
 from threading import Thread
+import os
+import sys
+
+def resource_path(relative_path):
+    if getattr(sys, 'frozen', False):
+        return os.path.join(sys._MEIPASS, relative_path)
+    return os.path.join(os.path.abspath("."), relative_path)
+
 
 # Ensure .deskai directory exists
 deskai_dir = Path.home() / ".deskai"

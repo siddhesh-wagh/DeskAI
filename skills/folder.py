@@ -193,22 +193,22 @@ class ListFolderSkill(BaseSkill):
 
 
 # ================= COMMAND REGISTRATION =================
-@command(["create folder", "make folder", "new folder"], priority=100)
+@command(["create folder", "make folder", "new folder"], priority=12)
 def cmd_create_folder(ctx, query):
     return CreateFolderSkill().execute(ctx, query)
 
-@command(["delete folder", "remove folder"], priority=100)
+@command(["delete folder", "remove folder"], priority=12)
 def cmd_delete_folder(ctx, query):
     return DeleteFolderSkill().execute(ctx, query)
 
-@command(["rename folder"], priority=100)
+@command(["rename folder"], priority=12)
 def cmd_rename_folder(ctx, query):
     return RenameFolderSkill().execute(ctx, query)
 
-@command(["open folder"], priority=100)
+@command(["open folder"], priority=12)
 def cmd_open_folder(ctx, query):
     return OpenFolderSkill().execute(ctx, query)
 
-@command(["list folders", "show folders"], priority=100)
+@command(["list folders", "show folders"], priority=12)
 def cmd_list_folders(ctx, query):
     return ListFolderSkill().execute(ctx, query)

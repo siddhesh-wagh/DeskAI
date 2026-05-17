@@ -26,6 +26,7 @@ def clean_filename(text: str) -> str:
         " txt": ".txt",
         " pdf": ".pdf",
         " zip": ".zip",      
+        " file": ".zip",      
         " doc": ".docx",
         "text file": ".txt"
     }
@@ -315,48 +316,48 @@ class ExtractFileSkill(BaseSkill):
 
 
 # ================= COMMAND REGISTRATION =================
-@command(["open file", "open"], priority=40)
+@command(["open file"], priority=10)
 def cmd_open_file(ctx: AssistantContext, query: str) -> Dict[str, Any]:
     return OpenFileSkill().execute(ctx, query)
 
 
-@command(["rename file", "rename"], priority=40)
+@command(["rename file", "rename"], priority=10)
 def cmd_rename_file(ctx: AssistantContext, query: str) -> Dict[str, Any]:
     return RenameFileSkill().execute(ctx, query)
 
 
-@command(["move file", "move"], priority=40)
+@command(["move file", "move"], priority=10)
 def cmd_move_file(ctx: AssistantContext, query: str) -> Dict[str, Any]:
     return MoveFileSkill().execute(ctx, query)
 
 
-@command(["compress file", "zip file"], priority=40)
+@command(["compress file", "zip file"], priority=10)
 def cmd_compress_file(ctx: AssistantContext, query: str) -> Dict[str, Any]:
     return CompressFileSkill().execute(ctx, query)
 
 
-@command(["extract file", "unzip"], priority=40)
+@command(["extract file", "unzip"], priority=10)
 def cmd_extract_file(ctx: AssistantContext, query: str) -> Dict[str, Any]:
     return ExtractFileSkill().execute(ctx, query)
 
 
 
 # ================= COMMAND REGISTRATION =================
-@command(["create file", "new file", "make file"], priority=40)
+@command(["create file", "new file", "make file"], priority=10)
 def cmd_create_file(ctx: AssistantContext, query: str) -> Dict[str, Any]:
     return CreateFileSkill().execute(ctx, query)
 
 
-@command(["delete file", "remove file", "delete", "remove"], priority=40)
+@command(["delete file", "remove file", "remove"], priority=10)
 def cmd_delete_file(ctx: AssistantContext, query: str) -> Dict[str, Any]:
     return DeleteFileSkill().execute(ctx, query)
 
 
-@command(["search file", "find file", "search for"], priority=40)
+@command(["search file", "find file", "search for"], priority=10)
 def cmd_search_file(ctx: AssistantContext, query: str) -> Dict[str, Any]:
     return SearchFileSkill().execute(ctx, query)
 
 
-@command(["list files", "show files", "open files"], priority=40)
+@command(["list files", "show files", "open files"], priority=10)
 def cmd_list_files(ctx: AssistantContext, query: str) -> Dict[str, Any]:
     return ListFilesSkill().execute(ctx, query)

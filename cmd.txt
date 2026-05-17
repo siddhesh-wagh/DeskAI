@@ -1,5 +1,0 @@
-"open file test.txt"
-"rename file test.txt to new.txt"
-"move file test.txt to documents"
-"compress file test.txt"
-"extract file test.zip"

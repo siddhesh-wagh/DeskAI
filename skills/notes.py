@@ -44,19 +44,25 @@ class NotesManager(BaseSkill):
 
 class TakeNoteSkill(NotesManager):
     """Create a new note with title and content"""
-    
-    def execute(self, context: AssistantContext, query: str, **params) -> Dict[str, Any]:
-        # Note: In a real implementation, you'd use dialog boxes or voice prompts
-        # For now, we'll return a message to use a dialog
-        
-        return SkillResult()\
-            .with_message(
-                "Note feature requires dialog input. "
-                "This will be implemented with GUI dialogs."
-            )\
-            .with_data({"action": "show_note_dialog"})\
-            .build()
 
+    def execute(self, context: AssistantContext, query: str, **params) -> Dict[str, Any]:
+        import re
+
+        # Extract content after command
+        match = re.search(r'(take note|create note|make note|new note)(.*)', query.lower())
+
+        if match:
+            content = match.group(2).strip()
+
+            if not content:
+                return self.error_response("Please say what to note")
+
+            # Create short title from first few words
+            title = " ".join(content.split()[:3])
+
+            return SaveNoteSkill().save_note(context, title, content)
+
+        return self.error_response("Could not understand note")
 
 class ReadNotesSkill(NotesManager):
     """Read all saved notes"""
@@ -89,16 +95,22 @@ class ReadNotesSkill(NotesManager):
 
 class DeleteNoteSkill(NotesManager):
     """Delete a note by title"""
-    
-    def execute(self, context: AssistantContext, query: str, **params) -> Dict[str, Any]:
-        return SkillResult()\
-            .with_message(
-                "Delete note feature requires dialog input. "
-                "This will be implemented with GUI dialogs."
-            )\
-            .with_data({"action": "show_delete_note_dialog"})\
-            .build()
 
+    def execute(self, context: AssistantContext, query: str, **params) -> Dict[str, Any]:
+        import re
+
+        # Example: "delete note shopping list"
+        match = re.search(r'(delete note|remove note)(.*)', query.lower())
+
+        if match:
+            title = match.group(2).strip()
+
+            if not title:
+                return self.error_response("Please specify note title")
+
+            return DeleteNoteByTitleSkill().delete_note(context, title)
+
+        return self.error_response("Could not understand which note to delete")
 
 class SaveNoteSkill(NotesManager):
     """
